@@ -4,6 +4,7 @@
 
 	.DESCRIPTION
 	Выполнение port knocking для удаленного хоста.
+	Идентификация пакета: протокол tcp (udp) порт, протокол icmp размер пакета.
 	Файл конфигурации - присутствие обязательно. Или передается через параметр FileCFG,
 	или должен быть файл в текущем каталоге knock.ps1.cfg
 	Описание файла:
@@ -23,7 +24,7 @@
 		3=step13
 		4=step14
 		host=host1.xxx
-		Имя параметра(числового) указывает порядок отправки пакета. Значение имя секции типа "Один шаг" с данными пакета отправки
+		Имя параметра(числового) указывает порядок отправки пакета. Значение имя секции типа "Один шаг" с данными пакета отправки.
 		Параметр host (необязательный) указывает адрес куда отправлять пакет. Переопределяется параметром скрипта knock.ps1 -RemoteHost
 
 	.PARAMETER FileCFG
@@ -255,7 +256,6 @@ param(
             });
         }
         # Проверить переданный параметр на валидность
-        #$is_valid_proto = ($KnockData.proto -is [Net.Sockets.ProtocolType]) -and                () -and
         if (! $KnockData.proto -is [Net.Sockets.ProtocolType] -or ($KnockData.host -eq '')) { return }
         $is_icmp = $KnockData.proto -eq [Net.Sockets.ProtocolType]'Icmp'
         $is_tcpORudp = ($KnockData.proto -eq [Net.Sockets.ProtocolType]'Tcp') -or ($KnockData.proto -eq [Net.Sockets.ProtocolType]'Udp')
@@ -329,6 +329,7 @@ $global:section_steps='steps'
 if ($SectionList -ne '') {
     $section_steps=$SectionList
 }
+
 # ОТЛАДКА, ПОТОМ УБРАТЬ
 #$section_steps='home1'
 #$section_steps='home_icmp'
@@ -341,10 +342,6 @@ $global:buf=[text.encoding]::ascii.getbytes("hi");
 
 if ( $hashCFG ) {
     $global:udpclient = new-object net.sockets.udpclient(0);
-    #$global:tcpclient = new-object net.sockets.tcpclient([Net.Sockets.AddressFamily]'InterNetwork');
-    #$global:socket = new-object net.sockets.socket([Net.Sockets.AddressFamily]'InterNetwork',
-    #                     [Net.Sockets.SocketType]'Stream',
-    #                     [Net.Sockets.ProtocolType]'tcp');
     $is_debug = $true
     if ($is_debug) {
         Write-Host "Begin KNOCK"
