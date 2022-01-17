@@ -54,6 +54,7 @@ proto=icmp
 length=54
 
 ;===================
+
 [home-mix-1h]
 1=step44i
 2=step79i
@@ -62,9 +63,9 @@ length=54
 4=step124i
 5=step82i
 host=hostname.dom
-;==============================
 
 ;==============================
+
 [home-240h]
 1=step57144u
 2=step8791t
