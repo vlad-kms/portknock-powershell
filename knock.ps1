@@ -1,3 +1,70 @@
+<#
+	.SYNOPSIS
+	Port knocking для удаленного хоста
+
+	.DESCRIPTION
+	Выполнение port knocking для удаленного хоста.
+	Файл конфигурации - присутствие обязательно. Или передается через параметр FileCFG,
+	или должен быть файл в текущем каталоге knock.ps1.cfg
+	Описание файла:
+		Секции в файле двух видов:
+	 	1) Один шаг. Описание одного шага для порт knock. Протокол (icmp, udp, tcp)
+		   и данные для этого шага (port для udp, tcp и длина пакета для icmp)
+		2) Список шагов. Список шагов из секций 1-го типа
+		1) Один шаг:
+			[step]
+			proto=tcp, по умолчанию udp
+			port=nnnn, значение от 1-65535, порт для tcp, udp 
+			length=nn, длина пакета icmp, реальный + 28 байт заголовок
+		2) Список шагов:
+		[steps]
+		1=step1
+		2=step12
+		3=step13
+		4=step14
+		host=host1.xxx
+		Имя параметра(числового) указывает порядок отправки пакета. Значение имя секции типа "Один шаг" с данными пакета отправки
+		Параметр host (необязательный) указывает адрес куда отправлять пакет. Переопределяется параметром скрипта knock.ps1 -RemoteHost
+
+	.PARAMETER FileCFG
+	Указывает файл конфигурации со списком секций для port knocking
+	По умолчанию ./knock.ps1.cfg
+
+	.PARAMETER RemoteHost
+	Указывает удаленный хост для port knocking.
+	По умолчанию пусто. Будет использоваться хост из секции [steps], указанной
+	в параметре SectionList
+
+	.PARAMETER SectionList
+	Указывает секцию для выполнения port knocking
+	По умолчанию "steps"
+
+    .PARAMETER DelayTime
+    Задержка между отправкой пакетов udp или tcp
+	По умолчанию 2
+
+    .PARAMETER DelayICMP
+    Задержка между отправкой пакетов icmp
+    По умолчанию 10
+
+	
+	.EXAMPLE
+
+	.\knock.ps1 -SectionList steps1 -RemoteHost h1.domain.ru -DelayICMP 10
+
+	Выполняет секцию [steps1] из файла конфигурации для удаленного хоста h1.domain.ru.
+	Задержка между отправкой пакетов icmp 10 секунд
+
+	.EXAMPLE
+
+	.\knock.ps1 c:\list-sections.cfg -SectionList steps2 -RemoteHost h1.domain.ru -DelayICMP 10 -DelayTime 4
+	or
+	.\knock.ps1 -FileCFG c:\list-sections.cfg -SectionList steps2 -RemoteHost h1.domain.ru -DelayICMP 10 -DelayTime 4
+
+	Выполняет секцию [steps2] из файла конфигурации c:\list-sections.cfg для удаленного хоста h1.domain.ru.
+	Задержка между отправкой пакетов icmp 10 секунд, а между пакетами udp (tcp) 4 секунды
+
+#>
 Param (
     [Parameter(ValueFromPipeline=$True, Position=0)]
     $FileCFG,
