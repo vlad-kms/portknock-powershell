@@ -29,34 +29,34 @@
 
 	Пример файла конфигурации
 	[home-icmp-1h]
-	1=step44i
-	2=step79i
-	3=step57i
-	4=step124i
-	5=step82i
+	1=step4i
+	2=step7i
+	3=step5i
+	4=step1i
+	5=step8i
 	host=hostname.dom
 	
-	[step44i]
+	[step4i]
 	; в icmp length = реальный + 28 байт
 	; т.е. если пакет в роутере должен быть 44, тогда length д.б. 44-28 - 16
 	proto=icmp
-	length=16
+	length=4
 	
-	[step79i]
+	[step7i]
 	proto=icmp
-	length=51
+	length=7
 	
-	[step57i]
+	[step5i]
 	proto=icmp
-	length=29
+	length=5
 	
-	[step124i]
+	[step1i]
 	proto=icmp
-	length=96
+	length=1
 	
-	[step82i]
+	[step8i]
 	proto=icmp
-	length=54
+	length=8
 	
 	;===================
 	
@@ -76,8 +76,8 @@
 	2=step8791t
 	3=step62014t
 	;4=step28014u
-	4=step28315t
-	5=step31597u
+	4=step283t
+	5=step315u
 	6=step60i
 	7=step43857u
 	host=hostname.dom
@@ -86,13 +86,13 @@
 	proto=icmp
 	length=32
 	
-	[step28315t]
+	[step283t]
 	proto=tcp
-	port=28315
+	port=283
 	
-	[step31597u]
+	[step315u]
 	proto=udp
-	port=31597
+	port=315
 	
 	[step43857u]
 	proto=udp
