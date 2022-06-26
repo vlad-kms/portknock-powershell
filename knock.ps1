@@ -256,6 +256,7 @@ param(
             });
         }
         # Проверить переданный параметр на валидность
+        #$is_valid_proto = ($KnockData.proto -is [Net.Sockets.ProtocolType]) -and                () -and
         if (! $KnockData.proto -is [Net.Sockets.ProtocolType] -or ($KnockData.host -eq '')) { return }
         $is_icmp = $KnockData.proto -eq [Net.Sockets.ProtocolType]'Icmp'
         $is_tcpORudp = ($KnockData.proto -eq [Net.Sockets.ProtocolType]'Tcp') -or ($KnockData.proto -eq [Net.Sockets.ProtocolType]'Udp')
