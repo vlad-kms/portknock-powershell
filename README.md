@@ -1,5 +1,20 @@
 # portknock-powershell
-	Выполнение port knocking для удаленного хоста.
+    Performing port knocking on a remote host.
+    ./knock.ps1    
+        -FileCFG     - configuration file name. Default: .\knock.ps1.cfg
+        -RemoteHost  - hostname to send packets to. Default: ''
+        -SectionList - section name from the configuration file. Default: 'steps'
+        -DelayTime   - packet response timeout in milliseconds. Default: 2 
+
+## RU-ru
+
+    Выполнение port knocking для удаленного хоста.
+    ./knock.ps1    
+        -FileCFG     - имя файла конфигурации. По-умолчанию: .\knock.ps1.cfg
+        -RemoteHost  - имя хоста на который отсылать пакеты. По-умолчанию: ''
+        -SectionList - имя секции из файла конфигурации. По-умолчанию: 'steps'
+        -DelayTime   - время ожидания ответа на пакеты в миллисекундах. По-умолчанию: 2 
+---
 	Идентификация пакета: протокол tcp (udp) порт, протокол icmp размер пакета.
 	Файл конфигурации - присутствие обязательно. Или передается через параметр FileCFG,
 	или должен быть файл в текущем каталоге knock.ps1.cfg
