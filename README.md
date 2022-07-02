@@ -1,5 +1,5 @@
 # portknock-powershell
-    Performing port knocking on a remote host.
+    Performing  port knocking on a remote host.
     ./knock.ps1    
         -FileCFG     - configuration file name. Default: .\knock.ps1.cfg
         -RemoteHost  - hostname to send packets to. Default: ''
