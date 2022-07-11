@@ -29,12 +29,10 @@
 
 	.PARAMETER FileCFG
 	Указывает файл конфигурации со списком секций для port knocking
-	По умолчанию ./knock.ps1.cfg
+	По умолчанию ./knock.ps1.ini
 
 	.PARAMETER RemoteHost
-	Указывает удаленный хост для port knocking.
-	По умолчанию пусто. Будет использоваться хост из секции [steps], указанной
-	в параметре SectionList
+	Указывает удаленный хост для port knocking. Обязательный
 
 	.PARAMETER SectionList
 	Указывает секцию для выполнения port knocking
@@ -69,12 +67,15 @@
 Param (
     [Parameter(ValueFromPipeline=$True, Position=0)]
     $FileCFG,
-    [Parameter(Position=1)]
-    $RemoteHost='',
+    [Parameter(Mandatory=$True, Position=1)]
+    $RemoteHost,
     $SectionList='steps',
     $DelayTime=2,
-    $DelayICMP=10
+    $DelayICMP=10,
+    [switch]$isDebug=$False
 )
+
+$Version='2.0.0';
 
 <#---------------------------------
  Работа с SectionVariable
@@ -86,7 +87,6 @@ function New-SectionVariables () {
         proto=[Net.Sockets.ProtocolType]'udp'
         port=0
         length=0
-        host=''
     }
     return $variables
 }
@@ -173,6 +173,7 @@ Param (
         $hashCFG=avvImport-Ini -IniFile $FileINI
         # отсортировать секцию [steps]
         #$hashCFG[$section_steps] = ($hashCFG[$section_steps].GetEnumerator()) | sort -Property Name
+        #$hashCFG.steps1.GetEnumerator()|Sort-Object name
             # ПРОЧИТАТЬ секцию [steps] INI файла, проверить существование секций, соответсвующим шагам.
             # Если нет, то создать ее и использовать значения по-умолчанию
         $hc=$hashCFG[$section_steps]
@@ -250,7 +251,7 @@ param(
 )
     BEGIN {}
     PROCESS {
-        if ($is_debug) {
+        if ($isDebug) {
             $KnockData.Keys.foreach({
                 Write-Host "$($_) = $($KnockData[$_])"
             });
@@ -316,17 +317,14 @@ param(
 #>
 
 if ( !$FileCFG ) {
-    $FileCFG = $PSCommandPath + '.cfg'
+    $FileCFG = $PSCommandPath + '.ini'
 }
 if ( ! (Test-Path -Path $FileCFG -Type Leaf) ) {
     Write-Host "Файл настроек $($FileCFG) не существует. Запуск невозможен." -BackgroundColor Red
     Exit
 }
 
-#echo $FileCFG;
-#echo $PSCommandPath
-
-$global:section_steps='steps'
+$section_steps='steps'
 if ($SectionList -ne '') {
     $section_steps=$SectionList
 }
@@ -337,26 +335,28 @@ $global:paramHost = $RemoteHost
 $par=@{
     '_obj_'=@{
         'filename' = $FileCFG;
+        'isReadOnly' = $False;
+        'isOverwrite' = $True;
     }
 }
 $global:hashCFG = (Get-AvvClass -ClassName 'IniCFG' -Params $par);
-$hashCFG.toJson();
-
-exit 0;
-
-$global:hashCFG = Init-VariableCFG -FileIni $FileCFG
-
+$hashCFG.setKeyValue('_always_', 'host', $paramHost);
+if ($isDebug)
+{
+    $hashCFG.toJson();
+}
 
 if ( $hashCFG ) {
+    # объект для работы с udp протоколом
     $global:udpclient = new-object net.sockets.udpclient(0);
-    $is_debug = $true
-    if ($is_debug) {
+
+    if ($isDebug) {
         Write-Host "Begin KNOCK"
     }
     try {
         $hashCFG.StepSortKeys.Foreach({
             $currentStep = $hashCFG[$hashCFG[$section_steps]["$_"]]
-            if ($is_debug) {
+            if ($isDebug) {
                 #$currentStep
                 Write-Host '==============='
             }
@@ -368,6 +368,9 @@ if ( $hashCFG ) {
         #$tcpclient.close()
         $udpclient.close()
         #$socket.close()
+    }
+    if ($isDebug) {
+        Write-Host "End KNOCK"
     }
 } else {
     Write-Host "Ошибка в разборе файла конфигурации, или неверно передано имя секции для выполнения"
