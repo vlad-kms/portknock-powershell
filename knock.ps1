@@ -62,8 +62,8 @@
 
 	Выполняет секцию [steps2] из файла конфигурации c:\list-sections.cfg для удаленного хоста h1.domain.ru.
 	Задержка между отправкой пакетов icmp 10 секунд, а между пакетами udp (tcp) 4 секунды
-
 #>
+
 Param (
     [Parameter(ValueFromPipeline=$True, Position=0)]
     $FileCFG,
@@ -325,12 +325,13 @@ if ( ! (Test-Path -Path $FileCFG -Type Leaf) ) {
 }
 
 $section_steps='steps'
-if ($SectionList -ne '') {
+if ($SectionList) {
     $section_steps=$SectionList
 }
 
 $global:buf=[text.encoding]::ascii.getbytes("hi");
-$global:paramHost = $RemoteHost
+#$global:paramHost = $RemoteHost
+$paramHost = $RemoteHost
 
 $par=@{
     '_obj_'=@{
@@ -339,22 +340,35 @@ $par=@{
         'isOverwrite' = $True;
     }
 }
-$global:hashCFG = (Get-AvvClass -ClassName 'IniCFG' -Params $par);
+$hashCFG = (Get-AvvClass -ClassName 'IniCFG' -Params $par);
 $hashCFG.setKeyValue('_always_', 'host', $paramHost);
+
+
 if ($isDebug)
 {
+    "hashCFG  ".PadRight(80, '=') | Write-Host
     $hashCFG.toJson();
+    "".PadRight(80, '=') | Write-Host
 }
 
 if ( $hashCFG ) {
     # объект для работы с udp протоколом
     $global:udpclient = new-object net.sockets.udpclient(0);
+    $sectionData = $hashCFG.getSection('', $section_steps);
+    $sectionData = ($sectionData.GetEnumerator()|Sort-Object name);
+    if ($isDebug)
+    {
+        "hashCFG  ".PadRight(80, '=') | Write-Host
+        $hashCFG.toJson();
+        "sectionData  ".PadRight(80, '=') | Write-Host
+        $sectionData;
+    }
 
     if ($isDebug) {
         Write-Host "Begin KNOCK"
     }
     try {
-        $hashCFG.StepSortKeys.Foreach({
+        $sectionData.Foreach({
             $currentStep = $hashCFG[$hashCFG[$section_steps]["$_"]]
             if ($isDebug) {
                 #$currentStep
