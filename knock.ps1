@@ -211,14 +211,11 @@ if ( ! (Test-Path -Path $FileCFG -Type Leaf) ) {
     Exit
 }
 
-$section_steps='steps'
 if ($SectionList) {
     $section_steps=$SectionList
 }
 
 $global:buf=[text.encoding]::ascii.getbytes("hi");
-#$global:paramHost = $RemoteHost
-$paramHost = $RemoteHost
 
 $par=@{
     '_obj_'=@{
@@ -228,15 +225,7 @@ $par=@{
     }
 }
 $hashCFG = (Get-AvvClass -ClassName 'IniCFG' -Params $par);
-$hashCFG.setKeyValue('_always_', 'host', $paramHost);
-
-
-if ($isDebug)
-{
-    "hashCFG  ".PadRight(80, '=') | WriteConsole
-    $hashCFG.toJson();
-    "".PadRight(80, '=') | WriteConsole
-}
+$hashCFG.setKeyValue('_always_', 'host', $RemoteHost);
 
 if ( $hashCFG ) {
     # объект для работы с udp протоколом
