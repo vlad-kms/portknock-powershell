@@ -102,15 +102,37 @@ function WriteConsole() {
     param(
         [Parameter(Mandatory=$True, ValueFromPipeline=$True)]
         [System.Object]$msg,
-        [System.ConsoleColor]$FColor= (Invoke-Command {(getDefaultColor).Foreground}),
-        [System.ConsoleColor]$BColor= (Invoke-Command {(getDefaultColor).Background})
+        $FColor= (Invoke-Command {(getDefaultColor).Foreground}),
+        $BColor= (Invoke-Command {(getDefaultColor).Background})
     )
     BEGIN{
 
     }
     PROCESS{
-        
         $msg | Write-Host -BackgroundColor $BColor -ForegroundColor $FColor;
+        return;
+        # TODO пока не получилось преобраховать ConsoleColor <--> Colors
+
+        if ($PSIse -eq $null)
+        {
+            $msg | Write-Host -BackgroundColor $BColor -ForegroundColor $FColor;
+        }
+        else
+        {
+            $oldBColor = $PSIse.Options.ConsolePaneBackgroundColor;
+            $oldFColor = $PSIse.Options.ConsolePaneForegroundColor;
+            try
+            {
+                $PSIse.Options.ConsolePaneBackgroundColor = $BColor;
+                $PSIse.Options.ConsolePaneForegroundColor = $FColor;
+                $msg | Write-Host;
+            }
+            finally
+            {
+                $PSIse.Options.ConsolePaneBackgroundColor = $oldBColor;
+                $PSIse.Options.ConsolePaneForegroundColor = $oldFColor;
+            }
+        }
     }
     END{}
 }
