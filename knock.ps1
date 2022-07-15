@@ -74,11 +74,13 @@ Param (
     $SectionList,
     $DelayTime=2,
     $DelayICMP=10,
-    [switch]$isDebug=$False
+    [switch]$isDebug=$False,
+    [string]$LogFile='',
+    [int]$LogLevel=1
 )
 
 $Version='3.0.1';
-$MAX_LENGTH_ICMP = 150;
+$MAX_LENGTH_ICMP = 4096;
 
 function getDefaultColor(){
     switch ($host.Name) {
@@ -244,10 +246,32 @@ $par=@{
         'filename' = $FileCFG;
         'isReadOnly' = $False;
         'isOverwrite' = $True;
+        'HostVar' = $Host;
+    }
+}
+
+if ($isDebug) {
+    $HV=$Host;
+    $ll = 1;
+}
+else {
+    $HV=$null;
+    $ll = -1;
+}
+$parLog = @{
+    '_obj_'=@{
+        'logFile' = '.\knock.log';
+        'logLevel'= $ll
+        'HostVar' = $HV;
     }
 }
 $hashCFG = (Get-AvvClass -ClassName 'IniCFG' -Params $par);
 $hashCFG.setKeyValue('_always_', 'host', $RemoteHost);
+$log = (Get-AvvClass -ClassName 'Logger' -Params $parLog);
+$log.log("$(''.PadRight(80, '='))", 0, 5, 1, $False, '', $null, 'cyan');
+$log.log("$($hashCFG.ToJson())", 0, 0, 1, $False, '', $null, 'cyan');
+$log.log($hashCFG, 0, 0, 1, $False, '', $null, 'cyan');
+$log.log($log.ToJson(), 0, 5, 1, $False, '', $null, 'cyan');
 
 if ( $hashCFG ) {
     # объект для работы с udp протоколом
