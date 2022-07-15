@@ -77,7 +77,7 @@ Param (
     [switch]$isDebug=$False
 )
 
-$Version='2.0.0';
+$Version='3.0.1';
 $MAX_LENGTH_ICMP = 150;
 
 function getDefaultColor(){
