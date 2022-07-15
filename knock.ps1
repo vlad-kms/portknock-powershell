@@ -269,9 +269,9 @@ $hashCFG = (Get-AvvClass -ClassName 'IniCFG' -Params $par);
 $hashCFG.setKeyValue('_always_', 'host', $RemoteHost);
 $log = (Get-AvvClass -ClassName 'Logger' -Params $parLog);
 $log.log("$(''.PadRight(80, '='))", 0, 5, 1, $False, '', $null, 'cyan');
-$log.log("$($hashCFG.ToJson())", 0, 0, 1, $False, '', $null, 'cyan');
-$log.log($hashCFG, 0, 0, 1, $False, '', $null, 'cyan');
-$log.log($log.ToJson(), 0, 5, 1, $False, '', $null, 'cyan');
+$log.log("$($hashCFG.ToJson())", 0, 100, 1, $False, '', $null, 'cyan');
+$log.log($hashCFG, 0, 100, 1, $False, '', 'black', 'yellow');
+$log.log($log.ToJson(), 0, 100, 1, $False, '', $null, 'cyan');
 
 if ( $hashCFG ) {
     # объект для работы с udp протоколом
