@@ -148,16 +148,14 @@ param(
 )
     BEGIN {}
     PROCESS {
-        if ($isDebug) {
-            WriteConsole "sectionName = $($sectionName)" -FColor Cyan;
-        }
+        $log.log("sectionName=$($sectionName)", 0, 5, 1, $False, '', $null, $log.FColor);
         # получить секцию с переданным именем
         $currentSection = $hashCFG.getSection($sectionName);
         if ($currentSection -eq $null)
         {
             return;
         }
-        $hashCFG.toJson($sectionName) | WriteConsole  -FColor Cyan;
+        $log.log($hashCFG.toJson($sectionName), 0, 100, 1, $False, '', $null, $log.FColor);
         # Проверить переданные параметры на валидность
         try
         {
@@ -251,16 +249,25 @@ $par=@{
 
 if ($isDebug) {
     $HV=$Host;
-    $ll = 1;
 }
 else {
     $HV=$null;
     $ll = -1;
 }
+if ($LogFile)
+{
+    $lf = $logFile;
+    $ll = 1;
+}
+else
+{
+    $lf = ""
+    $ll = -1;
+}
 $parLog = @{
     '_obj_'=@{
-        'logFile' = '.\knock.log';
-        'logLevel'= $ll
+        'logFile' = $lf;
+        'logLevel'= $ll;
         'HostVar' = $HV;
     }
     _obj_add_=@{
@@ -270,12 +277,18 @@ $parLog = @{
 $hashCFG = (Get-AvvClass -ClassName 'IniCFG' -Params $par);
 $hashCFG.setKeyValue('_always_', 'host', $RemoteHost);
 $log = (Get-AvvClass -ClassName 'Logger' -Params $parLog);
-$log.log("$('hashCFG '.PadRight(80, '='))", 0, 5, 1, $False, '', $null, 'cyan');
-$log.log($hashCFG, 0, 100, 1, $False, '', $null, 'cyan');
-$log.log("$('log '.PadRight(80, '='))", 0, 5, 1, $False, '', $null, 'cyan');
+$log.log("$('hashCFG '.PadRight(80, '='))", 0, 5, 1, $False, '', $null, $log.FColor);
+$log.log($hashCFG, 0, 100, 1, $False, '', $null, $log.FColor);
+$log.log("$('log '.PadRight(80, '='))", 0, 5, 1, $False, '', $null, $log.FColor);
 $log.log($log.ToJson(), 0, 100, 1, $False, '', $null, $log.FColor);
-$log.log("$('Params '.PadRight(80, '='))", 0, 5, 1, $False, '', $null, 'cyan');
-
+$log.log("$('Params '.PadRight(80, '='))", 0, 5, 1, $False, '', $null, $log.FColor);
+$log.log( @("FileCFG=$($FileCFG)",
+        "RemoteHost=$($RemoteHost)",
+        "SectionList=$($SectionList)",
+        "DelayTime=$($DelayTime)",
+        "DelayICMP=$($DelayICMP)",
+        "isDebug=$($isDebug)",
+        "LogFile=$($LogFile)"), 0, 1, 1, $False, '', $null, $log.FColor);
 
 if ( $hashCFG ) {
     # объект для работы с udp протоколом
@@ -284,6 +297,8 @@ if ( $hashCFG ) {
     if ($sectionData -ne $null) {
         $sectionData = ($sectionData.GetEnumerator()|Sort-Object name);
     }
+    $log.log("$('sectionData '.PadRight(80, '='))", 0, 5, 1, $False, '', $null, $log.FColor);
+    $log.log("$($sectionData)", 0, 100, 1, $False, '', $null, $log.FColor);
     try {
         if ($sectionData -ne $null){
             $sectionData.Foreach({
