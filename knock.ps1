@@ -75,8 +75,7 @@ Param (
     $DelayTime=2,
     $DelayICMP=10,
     [switch]$isDebug=$False,
-    [string]$LogFile='',
-    [int]$LogLevel=1
+    [string]$LogFile=''
 )
 
 $Version='3.0.1';
@@ -264,14 +263,19 @@ $parLog = @{
         'logLevel'= $ll
         'HostVar' = $HV;
     }
+    _obj_add_=@{
+        FColor=[ConsoleColor]'Cyan';
+    }
 }
 $hashCFG = (Get-AvvClass -ClassName 'IniCFG' -Params $par);
 $hashCFG.setKeyValue('_always_', 'host', $RemoteHost);
 $log = (Get-AvvClass -ClassName 'Logger' -Params $parLog);
-$log.log("$(''.PadRight(80, '='))", 0, 5, 1, $False, '', $null, 'cyan');
-$log.log("$($hashCFG.ToJson())", 0, 100, 1, $False, '', $null, 'cyan');
-$log.log($hashCFG, 0, 100, 1, $False, '', 'black', 'yellow');
-$log.log($log.ToJson(), 0, 100, 1, $False, '', $null, 'cyan');
+$log.log("$('hashCFG '.PadRight(80, '='))", 0, 5, 1, $False, '', $null, 'cyan');
+$log.log($hashCFG, 0, 100, 1, $False, '', $null, 'cyan');
+$log.log("$('log '.PadRight(80, '='))", 0, 5, 1, $False, '', $null, 'cyan');
+$log.log($log.ToJson(), 0, 100, 1, $False, '', $null, $log.FColor);
+$log.log("$('Params '.PadRight(80, '='))", 0, 5, 1, $False, '', $null, 'cyan');
+
 
 if ( $hashCFG ) {
     # объект для работы с udp протоколом
@@ -280,15 +284,6 @@ if ( $hashCFG ) {
     if ($sectionData -ne $null) {
         $sectionData = ($sectionData.GetEnumerator()|Sort-Object name);
     }
-    if ($isDebug)
-    {
-        "hashCFG  ".PadRight(80, '=') | WriteConsole
-        $hashCFG.toJson();
-        "sectionData  ".PadRight(80, '=') | WriteConsole
-        $sectionData;
-    }
-
-    "Begin KNOCK" | WriteConsole -FColor Cyan;
     try {
         if ($sectionData -ne $null){
             $sectionData.Foreach({
@@ -305,7 +300,6 @@ if ( $hashCFG ) {
         $udpclient.close()
         #$socket.close()
     }
-    "End KNOCK" | WriteConsole -FColor Cyan;
 } else {
     "Ошибка в разборе файла конфигурации, или неверно передано имя секции для выполнения" | WriteConsole;
 } ### if ( $hashCFG ) {
