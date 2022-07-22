@@ -275,7 +275,7 @@ $parLog = @{
     }
 }
 $hashCFG = (Get-AvvClass -ClassName 'IniCFG' -Params $par);
-$hashCFG.setKeyValue('_always_', 'host', $RemoteHost);
+$r=$hashCFG.setKeyValue('_always_', 'host', $RemoteHost);
 $log = (Get-AvvClass -ClassName 'Logger' -Params $parLog);
 $log.log("$('hashCFG '.PadRight(80, '='))", 0, 5, 1, $False, '', $null, $log.FColor);
 $log.log($hashCFG, 0, 100, 1, $False, '', $null, $log.FColor);
