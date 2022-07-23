@@ -1,3 +1,4 @@
+#using module "D:\tools\PSModules\avvClasses\classes\classCFG.ps1"
 <#
 	.SYNOPSIS
 	Port knocking для удаленного хоста
@@ -6,7 +7,7 @@
 	Выполнение port knocking для удаленного хоста.
 	Идентификация пакета: протокол tcp (udp) порт, протокол icmp размер пакета.
 	Файл конфигурации - присутствие обязательно. Или передается через параметр FileCFG,
-	или должен быть файл в текущем каталоге knock.ps1.cfg
+	или должен быть файл в текущем каталоге knock.ps1.ini
 	Описание файла:
 		Секции в файле двух видов:
 	 	1) Один шаг. Описание одного шага для порт knock. Протокол (icmp, udp, tcp)
@@ -29,12 +30,10 @@
 
 	.PARAMETER FileCFG
 	Указывает файл конфигурации со списком секций для port knocking
-	По умолчанию ./knock.ps1.cfg
+	По умолчанию ./knock.ps1.ini
 
 	.PARAMETER RemoteHost
-	Указывает удаленный хост для port knocking.
-	По умолчанию пусто. Будет использоваться хост из секции [steps], указанной
-	в параметре SectionList
+	Указывает удаленный хост для port knocking. Обязательный
 
 	.PARAMETER SectionList
 	Указывает секцию для выполнения port knocking
@@ -64,181 +63,79 @@
 
 	Выполняет секцию [steps2] из файла конфигурации c:\list-sections.cfg для удаленного хоста h1.domain.ru.
 	Задержка между отправкой пакетов icmp 10 секунд, а между пакетами udp (tcp) 4 секунды
-
 #>
+
 Param (
     [Parameter(ValueFromPipeline=$True, Position=0)]
     $FileCFG,
-    [Parameter(Position=1)]
-    $RemoteHost='',
-    $SectionList='steps',
+    [Parameter(Mandatory=$True, Position=1)]
+    $RemoteHost,
+    [Parameter(Mandatory=$True, Position=2)]
+    $SectionList,
     $DelayTime=2,
-    $DelayICMP=10
+    $DelayICMP=10,
+    [switch]$isDebug=$False,
+    [string]$LogFile=''
 )
 
-<#---------------------------------
- Работа с SectionVariable
------------------------------------#>
-$Version = '1.1.2';
+$Version='3.0.1';
+$MAX_LENGTH_ICMP = 4096;
 
-<# Создать секция [VAR] и инциализировать ее значениями по умолчанию #>
-function New-SectionVariables () {
-    $variables = [ordered]@{
-        proto=[Net.Sockets.ProtocolType]'udp'
-        port=0
-        length=0
-        host=''
-    }
-    return $variables
-}
-
-<# Создать копию секции [VAR] из переданной #>
-function Copy-SectionVariables ([hashtable]$SectionVariables) {
-    $result = New-SectionVariables
-    $SectionVariables.Keys.ForEach({
-        $result[$_]=$SectionVariables[$_]
-    }) ### $SectionVariables.Keys.ForEach({
-    return $result
-}
-
-<#---------------------------------
- Работа с файлом конфигурации
------------------------------------#>
-
-<# Импорт (чтение) параметров из файла конфигурации в hashtable. Пример в начале #>
-function avvImport-Ini {
-#[CmdletBinding()]
-param (
-    # Name of the iniFile to be parsed.
-    [Parameter(Mandatory=$true,ValueFromPipeline=$true)]
-    [ValidateScript({ Test-Path -PathType:Leaf -Path:$_ })]
-    [string] $IniFile
-)
-
-    begin
-    {
-        Write-Verbose "$($MyInvocation.Line)"
-        $iniObj = [ordered]@{}
-    }
-
-    process
-    {
-        switch -regex -File $IniFile {
-            "^\[(.+)\]$" {
-                $section = $matches[1]
-                $iniObj[$section] = [ordered]@{}
-                #Continue
-            }
-            "(?<key>^[^\#\;\=]*)[=?](?<value>.+)" {
-                $key  = $matches.key.Trim()
-                $value  = $matches.value.Trim()
-
-                if ( ($value -like '$(*)') -or ($value -like '"*"') ) {
-                    # в INI могут использоваться переменные (команды) из скрипта 
-                    # key1=$($var1)
-                    # key2="$var1"
-                    $value = Invoke-Expression $value
-                }
-                if ( $section ) {
-                    $iniObj[$section][$key] = $value
-                } else {
-                    $iniObj[$key] = $value
-                }
-                continue
-            }
-            "(?<key>^[^\#\;\=]*)[=?]" {
-                $key  = $matches.key.Trim()
-                if ( $section ) {
-                    $iniObj[$section][$key] = ""
-                } else {
-                    $iniObj[$key] = ""
-                }
-            }
-        } ### switch -regex -File $IniFile {
-    }
-    end
-    {
-        return $iniObj
-    }
-}
-
-<# Считать параметры из файла конфигурации. Пример файла в начале #>
-function Init-VariableCFG {
-Param (
-  [Parameter(ValueFromPipeline=$true,Position=0)]
-  [string]$FileIni
-)
-    $result = $null
-    try {
-        # считать настройки из .CFG файла
-        $hashCFG=avvImport-Ini -IniFile $FileINI
-        # отсортировать секцию [steps]
-        #$hashCFG[$section_steps] = ($hashCFG[$section_steps].GetEnumerator()) | sort -Property Name
-            # ПРОЧИТАТЬ секцию [steps] INI файла, проверить существование секций, соответсвующим шагам.
-            # Если нет, то создать ее и использовать значения по-умолчанию
-        $hc=$hashCFG[$section_steps]
-        if ($hc.contains('host')) {
-            $currentHost = $hc.Host
+function getDefaultColor(){
+    switch ($host.Name) {
+        'ConsoleHost' {
+            $BColor = $host.ui.rawui.backgroundcolor;
+            $FColor = $host.ui.rawui.Foregroundcolor;
         }
-        if ( $global:paramHost -ne '') {
-            $currentHost = $global:paramHost
+        '_Windows PowerShell ISE Host'{
+            $BColor = $host.PrivateData.ConsolePaneBackgroundColor;
+            $FColor = $host.PrivateData.ConsolePaneForegroundColor;
         }
-        # сортировать индексы списка шагов
-        $SortKeys=$hashCFG[$section_steps].Keys.GetEnumerator() |sort
-        $hashCFG.add('StepSortKeys', $SortKeys)
-
-        # инициализировать значениями по-умолчанию для секций stepN (где N - число)
-        $DefaultVariables = [ordered]@{Global=(New-SectionVariables)}
-        $vg=$DefaultVariables.Global
-        #$hc.Keys.Foreach({ write-host "$($_) ;;; $($hc[$_]) ;;; $($hashCFG.contains($hc[$_]))"})
-        $hc.Keys.Foreach({
-            $currStep = $hc[$_]
-            # секции для шага не существует
-            #if ( -not ($hashCFG.contains($currStep)) -and ($_.ToUpper() -ne 'HOST') ) {
-            if ( -not ($hashCFG.contains($currStep)) ) {
-                $hashCFG.add($currStep, [ordered]@{})
-            }
-            #$hashCFG[$currStep].Keys.Foreach({
-            $currStepSection = $hashCFG[$currStep];
-
-            #$hashCFG[$currStep].Keys.foreach({
-            # проинициализировать ключи в секции step: host, port, length, proto
-            foreach ($currKey in  $vg.Keys) {
-                if ($currStepSection.contains($currKey)) {
-                    if ($vg[$currKey] -is [Net.Sockets.ProtocolType]) {
-                        try {
-                            $currStepSection[$currKey] = [Net.Sockets.ProtocolType]$currStepSection[$currKey]
-                        }
-                        catch {
-                            $currStepSection[$currKey] = [Net.Sockets.ProtocolType]'udp'
-                        }
-                    } else {
-                        $currStepSection[$currKey] = [Convert]::ChangeType($currStepSection[$currKey], ($vg[$currKey]).GetType())
-                    }
-                } else {
-                    #$currStepSection[$_] = [Convert]::ChangeType($vg[$currKey], ($vg[$currKey]).GetType())
-                    $currStepSection[$currKey] = $vg[$currKey]
-                }
-                if ($currKey.ToUpper() -eq 'HOST') {
-                    if ($currStepSection[$currKey] -eq '') {
-                        $currStepSection[$currKey]=$currentHost
-                    }
-                }
-            }
-
-            <#
-            if ( $vg.Contains($_) ) {
-                $vg[$_] = [Convert]::ChangeType($hc[$_], ($vg[$_]).GetType())
-                #$vg[$_] = $hc[$_]
-            }
-            #>
-        }) ### $hc.Keys.Foreach({
-        $Result = $hashCFG
+        default {
+            $BColor = [System.ConsoleColor]'DarkBlue';
+            $FColor = [System.ConsoleColor]"White";
+        }
     }
-    catch {
-       $result = $null
+    return @{'Foreground'=$FColor; 'Background'=$BColor;}
+}
+
+function WriteConsole() {
+    param(
+        [Parameter(Mandatory=$True, ValueFromPipeline=$True)]
+        [System.Object]$msg,
+        $FColor= (Invoke-Command {(getDefaultColor).Foreground}),
+        $BColor= (Invoke-Command {(getDefaultColor).Background})
+    )
+    BEGIN{
+
     }
-    return $result
+    PROCESS{
+        $msg | Write-Host -BackgroundColor $BColor -ForegroundColor $FColor;
+        return;
+        # TODO пока не получилось преобраховать ConsoleColor <--> Colors
+
+        if ($PSIse -eq $null)
+        {
+            $msg | Write-Host -BackgroundColor $BColor -ForegroundColor $FColor;
+        }
+        else
+        {
+            $oldBColor = $PSIse.Options.ConsolePaneBackgroundColor;
+            $oldFColor = $PSIse.Options.ConsolePaneForegroundColor;
+            try
+            {
+                $PSIse.Options.ConsolePaneBackgroundColor = $BColor;
+                $PSIse.Options.ConsolePaneForegroundColor = $FColor;
+                $msg | Write-Host;
+            }
+            finally
+            {
+                $PSIse.Options.ConsolePaneBackgroundColor = $oldBColor;
+                $PSIse.Options.ConsolePaneForegroundColor = $oldFColor;
+            }
+        }
+    }
+    END{}
 }
 
 <#
@@ -247,36 +144,47 @@ Param (
 function SendOneKnock() {
 param(
   [Parameter(Mandatory=$True, ValueFromPipeline=$True)]
-  [System.Object]$KnockData
+  [String]$sectionName
 )
     BEGIN {}
     PROCESS {
-        if ($is_debug) {
-            $KnockData.Keys.foreach({
-                Write-Host "$($_) = $($KnockData[$_])"
-            });
+        $log.log("sectionName=$($sectionName)", 0, 5, 1, $False, '', $null, $log.FColor);
+        # получить секцию с переданным именем
+        $currentSection = $hashCFG.getSection($sectionName);
+        if ($currentSection -eq $null)
+        {
+            return;
         }
-        # Проверить переданный параметр на валидность
-        #$is_valid_proto = ($KnockData.proto -is [Net.Sockets.ProtocolType]) -and                () -and
-        if (! $KnockData.proto -is [Net.Sockets.ProtocolType] -or ($KnockData.host -eq '')) { return }
-        $is_icmp = $KnockData.proto -eq [Net.Sockets.ProtocolType]'Icmp'
-        $is_tcpORudp = ($KnockData.proto -eq [Net.Sockets.ProtocolType]'Tcp') -or ($KnockData.proto -eq [Net.Sockets.ProtocolType]'Udp')
-
+        $log.log($hashCFG.toJson($sectionName), 0, 100, 1, $False, '', $null, $log.FColor);
+        # Проверить переданные параметры на валидность
+        try
+        {
+            $proto = [Net.Sockets.ProtocolType]($hashCFG.getString($sectionName, 'proto'));
+        }
+        catch
+        {
+            $proto = $null;
+        }
+        if ($proto -eq $null) { return }
+        $is_icmp = $proto -eq [Net.Sockets.ProtocolType]'Icmp'
+        $is_tcpORudp = ($proto -eq [Net.Sockets.ProtocolType]'Tcp') -or ($proto -eq [Net.Sockets.ProtocolType]'Udp')
+        $port = $hashCFG.getInt($sectionName, 'port');
+        $length = $hashCFG.getInt($sectionName, 'length');
+        $__Host = $hashCFG.getString($sectionName, 'host');
+        #return;
         if (
-                ( $is_tcpORudp -and
-                ( ($KnockData.port -gt 0) -and ($KnockData.port -le 65535) ) ) -or
-                ( $is_icmp -and
-                    (($KnockData.length -gt 0) -and ($KnockData.length -le 150)) )
+                ( $is_tcpORudp `
+                -and ( ($port -gt 0) -and ($port -le 65535) ) ) `
+                -or ( $is_icmp -and (($length -gt 0) -and ($length -le $MAX_LENGTH_ICMP)) )
            )
         {
-
-            if ($KnockData.proto -eq [Net.Sockets.ProtocolType]'tcp') {
+            if ($proto -eq [Net.Sockets.ProtocolType]'tcp') {
                 $socket = new-object net.sockets.socket([Net.Sockets.AddressFamily]'InterNetwork',
                          [Net.Sockets.SocketType]'Stream',
-                         [Net.Sockets.ProtocolType]'tcp');
+                         $proto);
                 try {
                     # [System.IAsyncResult]
-                    $result = $socket.BeginConnect( $KnockData.host, $KnockData.Port, $null, $null);
+                    $result = $socket.BeginConnect( $__Host, $port, $null, $null);
                     $success = $result.AsyncWaitHandle.WaitOne( $DelayTime, $true );
                     if ($succes) {
                         $socket.EndConnect($result)
@@ -284,19 +192,19 @@ param(
                 } finally {
                     $socket.Close()
                 }
-            } elseif ($KnockData.proto -eq [Net.Sockets.ProtocolType]'icmp') {
+            } elseif ($proto -eq [Net.Sockets.ProtocolType]'icmp') {
                 #Test-Connection -BufferSize $KnockData.Length -Count 1 -ComputerName $KnockData.Host
                 $pingSender = new-object System.Net.NetworkInformation.Ping
                 try {
-                    $buf = [text.encoding]::ascii.getbytes(''.PadRight($KnockData.length, '1'));
+                    $buf = [text.encoding]::ascii.getbytes(''.PadRight($length, '1'));
                     $PingOptions = New-Object System.Net.NetworkInformation.PingOptions
                     $PingOptions.DontFragment = $false
-                    $global:reply = $pingSender.Send($KnockData.host, 100, $buf, $PingOptions);
+                    $global:reply = $pingSender.Send($__Host, 100, $buf, $PingOptions);
                 } finally {
                     $pingSender.Dispose()
                 }
             } else {
-                $udpclient.Connect($KnockData.host, $KnockData.port);
+                $udpclient.Connect($__Host, $port);
                 $res=$udpClient.Send($buf, $buf.length);
             } ###
             if ($is_icmp) {
@@ -317,47 +225,90 @@ param(
 #>
 
 if ( !$FileCFG ) {
-    $FileCFG = $PSCommandPath + '.cfg'
+    $FileCFG = $PSCommandPath + '.ini'
 }
-if ( ! (Test-Path -Path $FileCFG) ) {
-    Write-Host "Файл настроек $($FileCFG) не существует. Запуск невозможен." -BackgroundColor Red
+if ( ! (Test-Path -Path $FileCFG -Type Leaf) ) {
+    WriteConsole -msg "Файл настроек $($FileCFG) не существует. Запуск невозможен." -FColor Red
     Exit
 }
 
-#echo $FileCFG;
-#echo $PSCommandPath
-
-$global:section_steps='steps'
-if ($SectionList -ne '') {
+if ($SectionList) {
     $section_steps=$SectionList
 }
 
-# ОТЛАДКА, ПОТОМ УБРАТЬ
-#$section_steps='home1'
-#$section_steps='home_icmp'
-
-$global:paramHost = $RemoteHost
-
-$global:hashCFG = Init-VariableCFG -FileIni $FileCFG
-
 $global:buf=[text.encoding]::ascii.getbytes("hi");
 
-if ( $hashCFG ) {
-    $global:udpclient = new-object net.sockets.udpclient(0);
-    $is_debug = $true
-    if ($is_debug) {
-        Write-Host "Begin KNOCK"
+$par=@{
+    '_obj_'=@{
+        'filename' = $FileCFG;
+        'isReadOnly' = $False;
+        'isOverwrite' = $True;
+        'HostVar' = $Host;
     }
-    try {
-        $hashCFG.StepSortKeys.Foreach({
-            $currentStep = $hashCFG[$hashCFG[$section_steps]["$_"]]
-            if ($is_debug) {
-                #$currentStep
-                Write-Host '==============='
-            }
-            $currentStep | SendOneKnock
+}
 
-        })
+if ($isDebug) {
+    $HV=$Host;
+}
+else {
+    $HV=$null;
+    $ll = -1;
+}
+if ($LogFile)
+{
+    $lf = $logFile;
+    $ll = 1;
+}
+else
+{
+    $lf = ""
+    $ll = -1;
+}
+$parLog = @{
+    '_obj_'=@{
+        'logFile' = $lf;
+        'logLevel'= $ll;
+        'HostVar' = $HV;
+    }
+    _obj_add_=@{
+        FColor=[ConsoleColor]'Cyan';
+    }
+}
+$hashCFG = (Get-AvvClass -ClassName 'IniCFG' -Params $par);
+$r=$hashCFG.setKeyValue('_always_', 'host', $RemoteHost);
+$log = (Get-AvvClass -ClassName 'Logger' -Params $parLog);
+$log.log("$('hashCFG '.PadRight(80, '='))", 0, 5, 1, $False, '', $null, $log.FColor);
+$log.log($hashCFG, 0, 100, 1, $False, '', $null, $log.FColor);
+$log.log("$('log '.PadRight(80, '='))", 0, 5, 1, $False, '', $null, $log.FColor);
+$log.log($log.ToJson(), 0, 100, 1, $False, '', $null, $log.FColor);
+$log.log("$('Params '.PadRight(80, '='))", 0, 5, 1, $False, '', $null, $log.FColor);
+$log.log( @("FileCFG=$($FileCFG)",
+        "RemoteHost=$($RemoteHost)",
+        "SectionList=$($SectionList)",
+        "DelayTime=$($DelayTime)",
+        "DelayICMP=$($DelayICMP)",
+        "isDebug=$($isDebug)",
+        "LogFile=$($LogFile)"), 0, 1, 1, $False, '', $null, $log.FColor);
+
+if ( $hashCFG ) {
+    # объект для работы с udp протоколом
+    $global:udpclient = new-object net.sockets.udpclient(0);
+    $sectionData = $hashCFG.getSection('', $section_steps);
+    if ($sectionData -ne $null) {
+        $sectionData = ($sectionData.GetEnumerator()|Sort-Object name);
+    }
+    $log.log("$('sectionData '.PadRight(80, '='))", 0, 5, 1, $False, '', $null, $log.FColor);
+    $log.log("$($sectionData)", 0, 100, 1, $False, '', $null, $log.FColor);
+    try {
+        if ($sectionData -ne $null){
+            $sectionData.Foreach({
+                #$currentStep = $hashCFG[$hashCFG[$section_steps]["$_"]]
+                #$currentStepName = $_.value;
+                #$currentStepSection = $hashCFG.getSection($currentStepName)
+                #$currentStep | SendOneKnock
+                $_.value | SendOneKnock;
+            })
+        }
     }
     finally {
         #$tcpclient.close()
@@ -365,5 +316,5 @@ if ( $hashCFG ) {
         #$socket.close()
     }
 } else {
-    Write-Host "Ошибка в разборе файла конфигурации, или неверно передано имя секции для выполнения"
+    "Ошибка в разборе файла конфигурации, или неверно передано имя секции для выполнения" | WriteConsole;
 } ### if ( $hashCFG ) {
