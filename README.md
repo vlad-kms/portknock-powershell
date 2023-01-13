@@ -4,7 +4,9 @@
         -FileCFG     - configuration file name. Default: .\knock.ps1.cfg
         -RemoteHost  - hostname to send packets to. Default: ''
         -SectionList - section name from the configuration file. Default: 'steps'
-        -DelayTime   - packet response timeout in milliseconds. Default: 2 
+        -DelayTime   - packet response timeout in milliseconds. Default: 2
+	
+Для работы требуется класс IniCFG из репозитария avvClasses: using module "D:\tools\PSModules\avvClasses\classes\classCFG.ps1"
 
 ## RU-ru
 
