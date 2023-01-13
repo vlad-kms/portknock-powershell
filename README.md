@@ -6,7 +6,7 @@
         -SectionList - section name from the configuration file. Default: 'steps'
         -DelayTime   - packet response timeout in milliseconds. Default: 2
 	
-Для работы требуется класс IniCFG из репозитария avvClasses: using module "D:\tools\PSModules\avvClasses\classes\classCFG.ps1"
+Для работы требуется класс IniCFG из репозитария avvClasses: using module "<PATH>\classCFG.ps1"
 
 ## RU-ru
 
